@@ -1,6 +1,5 @@
 package com.generaltor.api.v1;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.generaltor.api.v1.entity.Sub;
 import com.generaltor.api.v1.mapper.ErrorResponse;
@@ -19,7 +18,7 @@ import org.jboss.logging.Logger;
 
 import static com.generaltor.api.v1.helper.JsonHelper.serializeToJson;
 
-@Path("/verify-license")
+@Path("/api/v1/license")
 @ApplicationScoped
 public class VerifyLicense {
     private static final Logger LOG = Logger.getLogger(VerifyLicense.class);
@@ -51,7 +50,7 @@ public class VerifyLicense {
             QueryDocumentSnapshot documentSnapshot = querySnapshot.getDocuments().getFirst();
             var sub = documentSnapshot.toObject(Sub.class);
             String subId = documentSnapshot.getId();
-            VerifyLicenseResponse verifyLicenseResponse = new VerifyLicenseResponse(subId, sub.getUserName());
+            VerifyLicenseResponse verifyLicenseResponse = new VerifyLicenseResponse(subId, sub.getUserName(), sub.getUserEmail());
             LOG.info("License verified from sub: " + subId);
             return Response.ok(objectMapper.writeValueAsString(verifyLicenseResponse)).build();
 
