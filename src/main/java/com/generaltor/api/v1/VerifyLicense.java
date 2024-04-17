@@ -2,8 +2,10 @@ package com.generaltor.api.v1;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.generaltor.api.v1.entity.Sub;
+import com.generaltor.api.v1.helper.SubHelper;
 import com.generaltor.api.v1.mapper.ErrorResponse;
 import com.generaltor.api.v1.mapper.VerifyLicenseResponse;
+import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -15,6 +17,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
+
+import javax.swing.text.Document;
 
 import static com.generaltor.api.v1.helper.JsonHelper.serializeToJson;
 
@@ -37,24 +41,21 @@ public class VerifyLicense {
         }
 
         try {
-            var query = firestore.collection("subs").whereEqualTo("license.licenseKey", license).get();
-            var querySnapshot = query.get();
-
-            if (querySnapshot.isEmpty()) {
-                ErrorResponse errorResponse = new ErrorResponse(404, "License not found");
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(serializeToJson(errorResponse))
-                        .build();
-            }
-
-            QueryDocumentSnapshot documentSnapshot = querySnapshot.getDocuments().getFirst();
-            var sub = documentSnapshot.toObject(Sub.class);
+            SubHelper firestoreHelper = new SubHelper(firestore);
+            DocumentSnapshot documentSnapshot = firestoreHelper.getSubByLicenseKey(license);
+            Sub sub = documentSnapshot.toObject(Sub.class);
             String subId = documentSnapshot.getId();
             VerifyLicenseResponse verifyLicenseResponse = new VerifyLicenseResponse(subId, sub.getUserName(), sub.getUserEmail());
             LOG.info("License verified from sub: " + subId);
             return Response.ok(objectMapper.writeValueAsString(verifyLicenseResponse)).build();
 
         } catch (Exception e) {
+            if (e.getMessage().equals("License not found")) {
+                ErrorResponse errorResponse = new ErrorResponse(404, "License not found");
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(serializeToJson(errorResponse))
+                        .build();
+            }
             LOG.error("Error verifying license", e);
             ErrorResponse errorResponse = new ErrorResponse(500, "Internal server error");
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
