@@ -2,10 +2,14 @@ package com.generaltor.api.v1;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.generaltor.api.v1.entity.Sub;
+import com.generaltor.api.v1.helper.SubHelper;
 import com.generaltor.api.v1.mapper.ErrorResponse;
 import com.generaltor.api.v1.mapper.GetUsageResponse;
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
+import com.google.cloud.firestore.QuerySnapshot;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -29,7 +33,9 @@ public class GetUsage {
     @ConfigProperty(name = "custom.secrets.maxallowedusagecount")
     int maxAllowedUsageCount;
 
-    Response getResponse(@HeaderParam("Authorization") String license, Firestore firestore, Logger log, ObjectMapper objectMapper) {
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUsage(@HeaderParam("Authorization") String license) {
         if (license == null || license.isBlank()) {
             ErrorResponse errorResponse = new ErrorResponse(400, "Missing or blank Authorization header");
             return Response.status(Response.Status.BAD_REQUEST)
@@ -38,35 +44,27 @@ public class GetUsage {
         }
 
         try {
-            var query = firestore.collection("subs").whereEqualTo("license.licenseKey", license).get();
-            var querySnapshot = query.get();
+            SubHelper firestoreHelper = new SubHelper(firestore);
+            DocumentSnapshot documentSnapshot = firestoreHelper.getSubByLicenseKey(license);
+            Sub sub = documentSnapshot.toObject(Sub.class);
+            String subId = documentSnapshot.getId();
+            assert sub != null;
+            GetUsageResponse getUsageResponse = new GetUsageResponse(subId, sub.getUsageCount(), maxAllowedUsageCount);
+            LOG.info("Usage retrieved from sub: " + subId);
+            return Response.ok(objectMapper.writeValueAsString(getUsageResponse)).build();
 
-            if (querySnapshot.isEmpty()) {
+        } catch (Exception e) {
+            if (e.getMessage().equals("License not found")) {
                 ErrorResponse errorResponse = new ErrorResponse(404, "License not found");
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(serializeToJson(errorResponse))
                         .build();
             }
-
-            QueryDocumentSnapshot documentSnapshot = querySnapshot.getDocuments().getFirst();
-            var sub = documentSnapshot.toObject(Sub.class);
-            String subId = documentSnapshot.getId();
-            GetUsageResponse getUsageResponse = new GetUsageResponse(subId, sub.getUsageCount(), maxAllowedUsageCount);
-            log.info("Usage retrieved from sub: " + subId);
-            return Response.ok(objectMapper.writeValueAsString(getUsageResponse)).build();
-
-        } catch (Exception e) {
-            log.error("Error retrieving usage", e);
+            LOG.error("Error retrieving usage", e);
             ErrorResponse errorResponse = new ErrorResponse(500, "Internal server error");
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(serializeToJson(errorResponse))
                     .build();
         }
-    }
-
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getUsage(@HeaderParam("Authorization") String license) {
-        return getResponse(license, firestore, LOG, objectMapper);
     }
 }
