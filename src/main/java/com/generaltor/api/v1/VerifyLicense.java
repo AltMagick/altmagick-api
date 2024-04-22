@@ -45,7 +45,8 @@ public class VerifyLicense {
             DocumentSnapshot documentSnapshot = firestoreHelper.getSubByLicenseKey(license);
             Sub sub = documentSnapshot.toObject(Sub.class);
             String subId = documentSnapshot.getId();
-            VerifyLicenseResponse verifyLicenseResponse = new VerifyLicenseResponse(subId, sub.getUserName(), sub.getUserEmail());
+            assert sub != null;
+            VerifyLicenseResponse verifyLicenseResponse = new VerifyLicenseResponse(subId, sub.getUserName(), sub.getUserEmail(), sub.getCreatedAt(), sub.getRenewsAt(), sub.getEndAt(), sub.getStatus(), sub.isCancelled());
             LOG.info("License verified from sub: " + subId);
             return Response.ok(objectMapper.writeValueAsString(verifyLicenseResponse)).build();
 
