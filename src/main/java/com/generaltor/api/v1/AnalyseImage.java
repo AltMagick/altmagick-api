@@ -1,6 +1,7 @@
 package com.generaltor.api.v1;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.generaltor.api.v1.entity.ImageRequest;
 import com.generaltor.api.v1.entity.Sub;
 import com.generaltor.api.v1.helper.SubHelper;
 import com.generaltor.api.v1.helper.VertexImage;
@@ -49,37 +50,42 @@ public class AnalyseImage {
     int maxAllowedUsageCount;
 
     @POST
-    @Consumes({"image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/heic", "image/heif"})
+    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response analyseImage(@HeaderParam("Authorization") String license,
                                  @HeaderParam("X-ALT-Language") String language,
-                                 InputStream imageStream) throws IOException {
-        LocalDateTime startTime = LocalDateTime.now();
-
-        if (license.isBlank()) {
-            ErrorResponse errorResponse = new ErrorResponse(400, "Missing or blank Authorization header");
-            return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
-        }
-
-        if (language.isBlank()) {
-            ErrorResponse errorResponse = new ErrorResponse(400, "Missing or blank Language header");
-            return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
-        }
-
-        byte[] imageData = IOUtils.toByteArray(imageStream);
-
-        if (imageData.length == 0) {
-            ErrorResponse errorResponse = new ErrorResponse(400, "Missing image data");
-            return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
-        }
-
+                                 ImageRequest imageRequest) throws IOException {
         try {
+            LocalDateTime startTime = LocalDateTime.now();
+
+            if (license.isBlank()) {
+                ErrorResponse errorResponse = new ErrorResponse(400, "Missing or blank Authorization header");
+                return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
+            }
+
+            if (language.isBlank()) {
+                ErrorResponse errorResponse = new ErrorResponse(400, "Missing or blank Language header");
+                return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
+            }
+
+            if (imageRequest == null || imageRequest.getImageUrl() == null || imageRequest.getImageUrl().isBlank()) {
+                ErrorResponse errorResponse = new ErrorResponse(400, "Missing image url");
+                return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
+            }
+
             SubHelper firestoreHelper = new SubHelper(firestore);
             DocumentSnapshot documentSnapshot = firestoreHelper.getSubByLicenseKey(license);
             Sub sub = documentSnapshot.toObject(Sub.class);
             String subId = documentSnapshot.getId();
             assert sub != null;
             int usageCount = sub.getUsageCount();
+            String status = sub.getStatus();
+
+            if (status.equals("expired")) {
+                ErrorResponse errorResponse = new ErrorResponse(403, "License expired");
+                LOG.info("License expired for sub: " + documentSnapshot.getId());
+                return Response.status(Response.Status.FORBIDDEN).entity(serializeToJson(errorResponse)).build();
+            }
 
             if (usageCount >= maxAllowedUsageCount) {
                 ErrorResponse errorResponse = new ErrorResponse(403, "Usage limit exceeded");
@@ -87,7 +93,7 @@ public class AnalyseImage {
                 return Response.status(Response.Status.FORBIDDEN).entity(serializeToJson(errorResponse)).build();
             }
 
-            String transcription = VertexImage.analyseImage(projectId, location, modelName, prompt, imageStream, language);
+            String transcription = VertexImage.analyseImage(projectId, location, modelName, prompt, imageRequest, language);
 
             firestore.runTransaction((Transaction.Function<Void>) transaction -> {
                 sub.setUsageCount(sub.getUsageCount() + 1);
@@ -119,7 +125,7 @@ public class AnalyseImage {
                         .build();
             }
             LOG.error("Error analysing image", e);
-            ErrorResponse errorResponse = new ErrorResponse(500, "Internal server error");
+            ErrorResponse errorResponse = new ErrorResponse(500, "An error occured");
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(serializeToJson(errorResponse)).build();
         }
     }
