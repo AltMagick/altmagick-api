@@ -10,12 +10,13 @@ import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import org.apache.tika.Tika;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 
 public class VertexImage {
@@ -24,26 +25,42 @@ public class VertexImage {
         try (VertexAI vertexAi = new VertexAI(projectId, location)) {
             GenerativeModel model = new GenerativeModel(modelName, vertexAi);
 
-            URL url = new URL(imageRequest.getImageUrl());
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0");
-            InputStream urlStream = connection.getInputStream();            PushbackInputStream pushUrlStream = new PushbackInputStream(urlStream, 100);
-            byte[] firstBytes = new byte[100];
-            pushUrlStream.read(firstBytes);
-            pushUrlStream.unread(firstBytes);
+            BufferedImage image;
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            String formatName;
 
-            Tika tika = new Tika();
-            ByteArrayInputStream bais = new ByteArrayInputStream(firstBytes);
-            String mimeType = tika.detect(bais);
-            String formatName = mimeType.startsWith("image/") ? mimeType.substring("image/".length()) : null;
+            if (imageRequest.getImageUrl().startsWith("data:image/")) {
+                String base64Image = imageRequest.getImageUrl().split(",")[1];
+                byte[] imageBytes = Base64.getDecoder().decode(base64Image);
+                image = ImageIO.read(new ByteArrayInputStream(imageBytes));
+                formatName = imageRequest.getImageUrl().split(",")[0].split(";")[0].split("/")[1];
+            } else {
+                URL url = new URL(imageRequest.getImageUrl());
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.5414.117 Mobile Safari/537.36");
+                InputStream urlStream = connection.getInputStream();
+                PushbackInputStream pushUrlStream = new PushbackInputStream(urlStream, 100);
+                byte[] firstBytes = new byte[100];
+                pushUrlStream.read(firstBytes);
+                pushUrlStream.unread(firstBytes);
+
+                Tika tika = new Tika();
+                ByteArrayInputStream bais = new ByteArrayInputStream(firstBytes);
+                String mimeType = tika.detect(bais);
+                formatName = mimeType.startsWith("image/") ? mimeType.substring("image/".length()) : null;
+
+                image = ImageIO.read(pushUrlStream);
+            }
 
             List<String> acceptedFormats = Arrays.asList("jpeg", "png", "webp", "heic", "heif");
 
-            BufferedImage image = ImageIO.read(pushUrlStream);
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
             if (!acceptedFormats.contains(formatName)) {
-                ImageIO.write(image, "JPEG", byteArrayOutputStream);
+                BufferedImage convertedImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+                convertedImage.createGraphics().drawImage(image, 0, 0, Color.WHITE, null);
+                boolean canWrite = ImageIO.write(convertedImage, "JPEG", byteArrayOutputStream);
+                if (!canWrite) {
+                    throw new IllegalStateException("Failed to write image.");
+                }
                 formatName = "jpeg";
             } else {
                 ImageIO.write(image, formatName, byteArrayOutputStream);
