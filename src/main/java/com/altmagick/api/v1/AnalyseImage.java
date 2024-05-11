@@ -1,29 +1,26 @@
-package com.generaltor.api.v1;
+package com.altmagick.api.v1;
 
+import com.altmagick.api.v1.entity.ImageRequest;
+import com.altmagick.api.v1.entity.Sub;
+import com.altmagick.api.v1.helper.JsonHelper;
+import com.altmagick.api.v1.helper.SubHelper;
+import com.altmagick.api.v1.helper.VertexImage;
+import com.altmagick.api.v1.mapper.AnalyseImageResponse;
+import com.altmagick.api.v1.mapper.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.generaltor.api.v1.entity.ImageRequest;
-import com.generaltor.api.v1.entity.Sub;
-import com.generaltor.api.v1.helper.SubHelper;
-import com.generaltor.api.v1.helper.VertexImage;
-import com.generaltor.api.v1.mapper.AnalyseImageResponse;
-import com.generaltor.api.v1.mapper.ErrorResponse;
 import com.google.cloud.firestore.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.commons.io.IOUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-
-import static com.generaltor.api.v1.helper.JsonHelper.serializeToJson;
 
 @Path("/api/v1/analyse")
 @ApplicationScoped
@@ -60,17 +57,17 @@ public class AnalyseImage {
 
             if (license.isBlank()) {
                 ErrorResponse errorResponse = new ErrorResponse(400, "Missing or blank Authorization header");
-                return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
+                return Response.status(Response.Status.BAD_REQUEST).entity(JsonHelper.serializeToJson(errorResponse)).build();
             }
 
             if (language.isBlank()) {
                 ErrorResponse errorResponse = new ErrorResponse(400, "Missing or blank Language header");
-                return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
+                return Response.status(Response.Status.BAD_REQUEST).entity(JsonHelper.serializeToJson(errorResponse)).build();
             }
 
             if (imageRequest == null || imageRequest.getImageUrl() == null || imageRequest.getImageUrl().isBlank()) {
                 ErrorResponse errorResponse = new ErrorResponse(400, "Missing image url");
-                return Response.status(Response.Status.BAD_REQUEST).entity(serializeToJson(errorResponse)).build();
+                return Response.status(Response.Status.BAD_REQUEST).entity(JsonHelper.serializeToJson(errorResponse)).build();
             }
 
             SubHelper firestoreHelper = new SubHelper(firestore);
@@ -84,13 +81,13 @@ public class AnalyseImage {
             if (status.equals("expired")) {
                 ErrorResponse errorResponse = new ErrorResponse(403, "License expired");
                 LOG.info("License expired for sub: " + documentSnapshot.getId());
-                return Response.status(Response.Status.FORBIDDEN).entity(serializeToJson(errorResponse)).build();
+                return Response.status(Response.Status.FORBIDDEN).entity(JsonHelper.serializeToJson(errorResponse)).build();
             }
 
             if (usageCount >= maxAllowedUsageCount) {
                 ErrorResponse errorResponse = new ErrorResponse(403, "Usage limit exceeded");
                 LOG.info("Usage limit exceeded for sub: " + documentSnapshot.getId());
-                return Response.status(Response.Status.FORBIDDEN).entity(serializeToJson(errorResponse)).build();
+                return Response.status(Response.Status.FORBIDDEN).entity(JsonHelper.serializeToJson(errorResponse)).build();
             }
 
             String transcription = VertexImage.analyseImage(projectId, location, modelName, prompt, imageRequest, language);
@@ -121,12 +118,12 @@ public class AnalyseImage {
             if (e.getMessage() != null && e.getMessage().equals("License not found")) {
                 ErrorResponse errorResponse = new ErrorResponse(404, "License not found");
                 return Response.status(Response.Status.NOT_FOUND)
-                        .entity(serializeToJson(errorResponse))
+                        .entity(JsonHelper.serializeToJson(errorResponse))
                         .build();
             }
             LOG.error("Error analysing image", e);
             ErrorResponse errorResponse = new ErrorResponse(500, "An error occured");
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(serializeToJson(errorResponse)).build();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(JsonHelper.serializeToJson(errorResponse)).build();
         }
     }
 }

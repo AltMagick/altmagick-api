@@ -1,10 +1,8 @@
-package com.generaltor.api.v1.helper;
+package com.altmagick.api.v1.helper;
 
-import com.generaltor.api.v1.entity.Sub;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.firestore.QuerySnapshot;
 
 public class SubHelper {

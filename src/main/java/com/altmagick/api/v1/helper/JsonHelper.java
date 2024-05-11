@@ -1,4 +1,4 @@
-package com.generaltor.api.v1.helper;
+package com.altmagick.api.v1.helper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

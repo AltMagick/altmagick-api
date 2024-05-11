@@ -1,6 +1,6 @@
-package com.generaltor.api.v1.helper;
+package com.altmagick.api.v1.helper;
 
-import com.generaltor.api.v1.entity.ImageRequest;
+import com.altmagick.api.v1.entity.ImageRequest;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerateContentResponse;
 import com.google.cloud.vertexai.generativeai.ContentMaker;

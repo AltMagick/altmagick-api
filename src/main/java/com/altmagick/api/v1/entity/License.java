@@ -1,4 +1,4 @@
-package com.generaltor.api.v1.entity;
+package com.altmagick.api.v1.entity;
 
 public class License {
     private String licenseKey;

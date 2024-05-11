@@ -1,4 +1,4 @@
-package com.generaltor.api.v1.mapper;
+package com.altmagick.api.v1.mapper;
 
 import com.google.cloud.Timestamp;
 
