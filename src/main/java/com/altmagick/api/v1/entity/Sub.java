@@ -9,8 +9,6 @@ public class Sub {
     private Timestamp endAt;
     private boolean cancelled;
     private Timestamp renewsAt;
-    private Timestamp nextReset;
-    private Timestamp lastReset;
     private String userName;
     private Timestamp createdAt;
     private Timestamp updatedAt;
@@ -21,14 +19,12 @@ public class Sub {
     public Sub() {
     }
 
-    public Sub(boolean pause, String status, Timestamp endAt, boolean cancelled, Timestamp renewsAt, Timestamp nextReset, Timestamp lastReset, String userName, Timestamp createdAt, Timestamp updatedAt, String userEmail, Integer usageCount, License license) {
+    public Sub(boolean pause, String status, Timestamp endAt, boolean cancelled, Timestamp renewsAt, String userName, Timestamp createdAt, Timestamp updatedAt, String userEmail, Integer usageCount, License license) {
         this.pause = pause;
         this.status = status;
         this.endAt = endAt;
         this.cancelled = cancelled;
         this.renewsAt = renewsAt;
-        this.nextReset = nextReset;
-        this.lastReset = lastReset;
         this.userName = userName;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -75,22 +71,6 @@ public class Sub {
 
     public void setRenewsAt(Timestamp renewsAt) {
         this.renewsAt = renewsAt;
-    }
-
-    public Timestamp getNextReset() {
-        return nextReset;
-    }
-
-    public void setNextReset(Timestamp nextReset) {
-        this.nextReset = nextReset;
-    }
-
-    public Timestamp getLastReset() {
-        return lastReset;
-    }
-
-    public void setLastReset(Timestamp lastReset) {
-        this.lastReset = lastReset;
     }
 
     public String getUserName() {
